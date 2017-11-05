@@ -23,8 +23,8 @@ app.use(
     connection(mysql,{
         host     : 'localhost',
         user     : 'root',
-        password : '',
-        database : 'test',
+        password : 'root',
+        database : 'test1',
         debug    : false //set true if you wanna see debug logger
     },'request')
 
@@ -48,10 +48,13 @@ var router = express.Router();
 --------------------------------------------------------*/
 router.use(function(req, res, next) {
     console.log(req.method, req.url);
+    res.header("Access-Control-Allow-Origin", "*"); //for localhost to localhost access
+    res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE"); //allowing methods
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
 
-var curut = router.route('/user');
+var curut = router.route('/data');
 
 
 //show the CRUD interface | GET
@@ -62,14 +65,16 @@ curut.get(function(req,res,next){
 
         if (err) return next("Cannot Connect");
 
-        var query = conn.query('SELECT * FROM t_user',function(err,rows){
+        var query = conn.query('SELECT * FROM data1',function(err,rows){
 
             if(err){
                 console.log(err);
                 return next("Mysql error, check your query");
             }
 
-            res.render('user',{title:"RESTful Crud Example",data:rows});
+            res.send(rows);
+            //console.log(rows);
+            //res.render('user',{title:"RESTful Crud Example",data:rows});
 
          });
 
@@ -80,29 +85,35 @@ curut.get(function(req,res,next){
 curut.post(function(req,res,next){
 
     //validation
-    req.assert('name','Name is required').notEmpty();
-    req.assert('email','A valid email is required').isEmail();
-    req.assert('password','Enter a password 6 - 20').len(6,20);
+    //req.assert('name','Name is required').notEmpty();
+    //req.assert('email','A valid email is required').isEmail();
+    //req.assert('password','Enter a password 6 - 20').len(6,20);
 
-    var errors = req.validationErrors();
-    if(errors){
-        res.status(422).json(errors);
-        return;
-    }
+    //var errors = req.validationErrors();
+    //if(errors){
+    //    res.status(422).json(errors);
+    //    return;
+    //}
 
     //get data
-    var data = {
-        name:req.body.name,
-        email:req.body.email,
-        password:req.body.password
-     };
+    //var data = {
+    //    name:req.body.name,
+    //    email:req.body.email,
+    //    password:req.body.password
+    // };
+	
+    var data = req.body;
+    var values = [];
+    
+    for(var i=0; i< data.length; i++)
+      values.push([data[i].id,data[i].label]);
 
     //inserting into mysql
     req.getConnection(function (err, conn){
 
         if (err) return next("Cannot Connect");
 
-        var query = conn.query("INSERT INTO t_user set ? ",data, function(err, rows){
+        var query = conn.query("INSERT INTO data1 (id,label) VALUES ? ",[values], function(err, rows){
 
            if(err){
                 console.log(err);
@@ -117,9 +128,66 @@ curut.post(function(req,res,next){
 
 });
 
+//update data
+curut.put(function(req,res,next){
+    
+    var data = req.body;
+    var values = [];
+    var id = [];
+    
+    for(var i=0; i< data.length; i++){
+        values.push([data[i].label]);
+        id.push([data[i].id]);
+    }
+
+    //inserting into mysql
+    req.getConnection(function (err, conn){
+
+        if (err) return next("Cannot Connect");
+
+        var query = conn.query("UPDATE data1 set label = ? WHERE id = ? ",[values,id], function(err, rows){
+
+           if(err){
+                console.log(err);
+                return next("Mysql error, check your query");
+           }
+
+          res.sendStatus(200);
+
+        });
+
+     });
+
+});
+
+//delete data
+curut.delete(function(req,res,next){
+    
+        //var user_id = req.params.user_id;
+    
+         req.getConnection(function (err, conn) {
+    
+            if (err) return next("Cannot Connect");
+    
+            //var query = conn.query("DELETE FROM t_user  WHERE user_id = ? ",[user_id], function(err, rows){
+            var query = conn.query("DELETE FROM data1 ", function(err, rows){
+    
+                 if(err){
+                    console.log(err);
+                    return next("Mysql error, check your query");
+                 }
+    
+                 res.sendStatus(200);
+    
+            });
+            //console.log(query.sql);
+    
+         });
+    });
+
 
 //now for Single route (GET,DELETE,PUT)
-var curut2 = router.route('/user/:user_id');
+var curut2 = router.route('/data/:id');
 
 /*------------------------------------------------------
 route.all is extremely useful. you can use it to do
